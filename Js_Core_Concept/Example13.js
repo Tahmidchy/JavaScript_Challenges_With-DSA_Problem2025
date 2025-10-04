@@ -10,4 +10,4 @@ if (x) {
 } else {
     console.log("value of x is falsy");
 };
-// Output: value of x is truthy
+// Output: value of x is truthy 
