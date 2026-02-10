@@ -5,3 +5,14 @@ TODO: Problem-24: ইকমার্স ওয়েবসাইট প্রোড
 
 //Solution-24: 
 
+const productReview = {
+    productName: 'Wireless Earbuds',
+    reviewerDetails: {
+        name: 'John Doe',
+        email: 'john Doe@gmail.com'
+    },
+    rating: 4.5,
+    reviewText: 'Great sound quality and comfortable fit. Battery life could be better.'
+}
+const productReview_JSON = JSON.stringify(productReview);
+console.log(productReview_JSON);
