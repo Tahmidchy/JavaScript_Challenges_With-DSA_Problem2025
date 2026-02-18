@@ -4,7 +4,7 @@ TODO: Problem-26: এখন sendEmail নামে একটা ফাংশন 
 
 // Solution-26:
 
-function sendEmail(email){
+/*function sendEmail(email){
     const validEmails = ["@gmail.com", "@yahoo.com", "@hotmail.com"];
     return new Promise((resolve, reject) => {
         const isValidEmail = validEmails.some(validEmail => email.endsWith(validEmail));
@@ -18,6 +18,30 @@ function sendEmail(email){
 
 // Example usage:
 sendEmail("tahmidchy@hotmail.com")
+    .then(message => console.log(message))
+    .catch(error => console.log(error));
+
+sendEmail("tahmidchy@xyz.com")
+    .then(message => console.log(message))
+    .catch(error => console.log(error));*/
+
+/* Again Code */
+
+function sendEmail(email) {
+    const validEmails = ["@gmail.com", "@yahoo.com", "@hotmail.com"];
+    return new Promise((resolve, reject)=> {
+        const isValidEmail = validEmails.some(validEmail => email.endsWith(validEmail));
+        if (isValidEmail){
+            resolve("Email from Nigerian Prince");
+        } else {
+            reject("Let's dance in the spam folder");
+        }
+    });
+}
+
+// Example usage:   
+
+sendEmail("Tahmidchy@gmail.com")
     .then(message => console.log(message))
     .catch(error => console.log(error));
 
