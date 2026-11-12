@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>আপনি আমার শেষ ঠিকানা - 3D Magical Garden</title>
+    
+    <!-- Google Fonts for Bengali Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@300;400;600;700&family=Hind+Siliguri:wght@300;400;500;600;700&family=Playfair+Display:ital@1&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Three.js & OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- GSAP for Smooth Timeline Animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #030108;
+            font-family: 'Hind Siliguri', 'Anek Bangla', sans-serif;
+            user-select: none;
+            color: #f3e8ff;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+
+        /* Glassmorphism Styling */
+        .glass-panel {
+            background: rgba(18, 7, 33, 0.55);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(236, 72, 153, 0.2);
+            box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.6);
+        }
+
+        /* Text Glow Animations */
+        .glow-text-pink {
+            text-shadow: 0 0 15px rgba(244, 114, 182, 0.8), 0 0 30px rgba(217, 70, 239, 0.5), 0 0 45px rgba(236, 72, 153, 0.3);
+        }
+        .glow-text-purple {
+            text-shadow: 0 0 20px rgba(192, 132, 252, 0.9), 0 0 40px rgba(147, 51, 234, 0.6);
+        }
+
+        /* Floating Poems Effect */
+        .floating-poem {
+            position: absolute;
+            pointer-events: none;
+            transition: opacity 1.5s ease, transform 1.5s ease;
+            font-size: 1.15rem;
+            color: rgba(253, 242, 248, 0.95);
+            text-shadow: 0 2px 14px rgba(0,0,0,0.9), 0 0 8px rgba(236,72,153,0.6);
+            font-weight: 400;
+        }
+
+        /* Heart Pulse */
+        @keyframes pulseGlow {
+            0%, 100% { transform: scale(1); opacity: 0.9; filter: drop-shadow(0 0 15px rgba(244,114,182,0.8)); }
+            50% { transform: scale(1.18); opacity: 1; filter: drop-shadow(0 0 30px rgba(236,72,153,1)); }
+        }
+
+        .heart-pulse {
+            animation: pulseGlow 1.8s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="w-full h-screen overflow-hidden">
+
+    <!-- 3D WebGL Canvas Container -->
+    <div id="canvas-container"></div>
+
+    <!-- UI Overlay Layer -->
+    <div class="relative z-10 w-full h-full pointer-events-none flex flex-col justify-between p-4 md:p-8">
+        
+        <!-- Top Bar: Header, Audio Controls & Custom MP3 upload option -->
+        <div class="flex justify-between items-center w-full max-w-6xl mx-auto pointer-events-auto">
+            <div class="flex items-center gap-3 glass-panel px-4 py-2 rounded-full">
+                <div class="w-3 h-3 rounded-full bg-pink-500 animate-ping"></div>
+                <span class="text-xs md:text-sm tracking-wider font-semibold text-pink-200">3D MAGICAL GARDEN</span>
+            </div>
+
+            <!-- Audio & Custom Music Buttons -->
+            <div class="flex items-center gap-3">
+                <!-- Custom MP3 File Loader (Optional) -->
+                <label class="glass-panel px-3 py-2 rounded-full hover:bg-white/10 transition-all text-xs text-purple-200 cursor-pointer flex items-center gap-2">
+                    <svg class="w-4 h-4 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 .895-2 3-2 3 .895 3 2zm12 0c0 1.105-1.343 2-3 2s-3-.895-3-2 .895-2 3-2 3 .895 3 2zM9 10l12-3"></path></svg>
+                    <span>MP3 আপলোড</span>
+                    <input type="file" id="custom-audio-input" accept="audio/*" class="hidden" onchange="loadCustomAudio(event)">
+                </label>
+
+                <!-- Audio Toggle Button -->
+                <button id="audio-btn" onclick="toggleAudio()" class="glass-panel p-3 rounded-full hover:bg-white/10 transition-all text-pink-300 flex items-center justify-center">
+                    <svg id="sound-off-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg>
+                    <svg id="sound-on-icon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+                </button>
+                
+                <button onclick="restartExperience()" class="glass-panel px-4 py-2 rounded-full hover:bg-white/10 transition-all text-xs md:text-sm font-medium text-purple-200">
+                    পুনরায় দেখুন (Replay)
+                </button>
+            </div>
+        </div>
+
+        <!-- Center Stage Lyrics & Text Animations -->
+        <div class="flex-1 flex flex-col justify-center items-center text-center px-4">
+            
+            <!-- Main Lyric Banner (Phase 3) -->
+            <div id="main-lyric-container" class="opacity-0 transform translate-y-8 transition-all duration-1000 max-w-2xl">
+                <h1 id="main-lyric" class="text-3xl md:text-6xl font-bold glow-text-pink leading-relaxed tracking-wide text-white">
+                    আপনি আমার শেষ ঠিকানা
+                </h1>
+                <p id="sub-lyric" class="text-sm md:text-lg text-purple-200/90 mt-2 font-light">
+                    এই রঙিন বাগানের প্রতিটি মাটির কণা যেন আপনারই ভালোবাসার সুবাস বহন করে...
+                </p>
+            </div>
+
+            <!-- Floating Poetic Lines Container -->
+            <div id="poetic-lines-wrapper" class="absolute inset-0 pointer-events-none"></div>
+
+            <!-- Phase 4: Thank You Card -->
+            <div id="thank-you-card" class="opacity-0 scale-95 pointer-events-none transition-all duration-1000 glass-panel p-8 md:p-12 rounded-3xl max-w-lg mx-auto flex flex-col items-center gap-4">
+                <div class="w-16 h-16 text-pink-400 heart-pulse flex items-center justify-center">
+                    <svg class="w-full h-full fill-current" viewBox="0 0 24 24">
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    </svg>
+                </div>
+                <h2 class="text-3xl md:text-4xl font-bold text-white glow-text-purple">ধন্যবাদ</h2>
+                <p class="text-purple-200/95 text-sm md:text-base leading-relaxed">
+                    আমার সকল অনুভূতি, প্রেম আর পথচলায় সুন্দরভাবে জড়িয়ে থাকার জন্য। আপনি আমার জীবনের শ্রেষ্ঠ প্রাপ্তি।
+                </p>
+                <button onclick="restartExperience()" class="pointer-events-auto mt-4 px-6 py-2.5 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-medium shadow-lg transition-all transform hover:scale-105">
+                    আবার শুরু করুন
+                </button>
+            </div>
+        </div>
+
+        <!-- Bottom Timeline Control Bar -->
+        <div class="w-full max-w-3xl mx-auto pointer-events-auto glass-panel p-4 rounded-2xl flex flex-col gap-3">
+            <div class="flex justify-between items-center text-xs md:text-sm text-purple-200">
+                <span id="phase-indicator" class="font-semibold text-pink-300">ধাপ ১: বাগানে বীজ বপন ও কাণ্ড গজানো...</span>
+                <span id="time-display" class="font-mono text-purple-300/80">00:00</span>
+            </div>
+            
+            <!-- Progress Bar -->
+            <div class="relative w-full h-2.5 bg-purple-950/70 rounded-full overflow-hidden cursor-pointer" onclick="seekTimeline(event)">
+                <div id="progress-bar" class="h-full bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-400 w-0 rounded-full transition-all duration-300"></div>
+            </div>
+
+            <!-- Play / Pause Action Button -->
+            <div class="flex justify-center items-center gap-6 pt-1">
+                <button onclick="togglePlayPause()" id="play-pause-btn" class="text-purple-200 hover:text-white transition-colors">
+                    <svg id="pause-icon" class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                    <svg id="play-icon" class="w-7 h-7 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden HTML5 Audio Element for MP3 Fallback -->
+    <audio id="custom-audio-player" loop class="hidden"></audio>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // --- 1. Synthesizer & Audio Engine ---
+        let audioCtx = null;
+        let isAudioPlaying = false;
+        let masterGain = null;
+        let customAudioElement = document.getElementById('custom-audio-player');
+        let usingCustomAudio = false;
+
+        function initAudio() {
+            if (audioCtx) return;
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext();
+            masterGain = audioCtx.createGain();
+            masterGain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+            masterGain.connect(audioCtx.destination);
+        }
+
+        // Custom Romantic Melody (Matching the Punjabi/Hindi Track Melodic Vibe)
+        // Progression: F#m -> D -> A -> E (Romantic Acoustic Vibe)
+        const romanticNotes = [
+            // Measure 1: F#m
+            { freq: 369.99, time: 0.0, duration: 0.6 },
+            { freq: 440.00, time: 0.4, duration: 0.6 },
+            { freq: 554.37, time: 0.8, duration: 1.2 },
+            { freq: 440.00, time: 1.6, duration: 0.6 },
+
+            // Measure 2: D Major
+            { freq: 293.66, time: 2.2, duration: 0.6 },
+            { freq: 369.99, time: 2.6, duration: 0.6 },
+            { freq: 440.00, time: 3.0, duration: 1.2 },
+            { freq: 369.99, time: 3.8, duration: 0.6 },
+
+            // Measure 3: A Major
+            { freq: 220.00, time: 4.4, duration: 0.6 },
+            { freq: 277.18, time: 4.8, duration: 0.6 },
+            { freq: 329.63, time: 5.2, duration: 1.2 },
+            { freq: 440.00, time: 6.0, duration: 0.6 },
+
+            // Measure 4: E Major
+            { freq: 329.63, time: 6.6, duration: 0.8 },
+            { freq: 293.66, time: 7.2, duration: 0.8 },
+            { freq: 277.18, time: 7.8, duration: 1.0 }
+        ];
+
+        function playMelodicSynth() {
+            if (!audioCtx || !isAudioPlaying || usingCustomAudio) return;
+
+            const now = audioCtx.currentTime;
+
+            romanticNotes.forEach(note => {
+                const osc = audioCtx.createOscillator();
+                const noteGain = audioCtx.createGain();
+
+                // Warm guitar-like synth wave
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(note.freq, now + note.time);
+
+                // Smooth envelope
+                noteGain.gain.setValueAtTime(0, now + note.time);
+                noteGain.gain.linearRampToValueAtTime(0.06, now + note.time + 0.1);
+                noteGain.gain.exponentialRampToValueAtTime(0.0001, now + note.time + note.duration);
+
+                osc.connect(noteGain);
+                noteGain.connect(masterGain);
+
+                osc.start(now + note.time);
+                osc.stop(now + note.time + note.duration + 0.1);
+            });
+        }
+
+        function toggleAudio() {
+            initAudio();
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            isAudioPlaying = !isAudioPlaying;
+
+            document.getElementById('sound-off-icon').classList.toggle('hidden', isAudioPlaying);
+            document.getElementById('sound-on-icon').classList.toggle('hidden', !isAudioPlaying);
+
+            if (usingCustomAudio) {
+                if (isAudioPlaying) customAudioElement.play();
+                else customAudioElement.pause();
+            } else {
+                if (isAudioPlaying) {
+                    playMelodicSynth();
+                    setInterval(() => { if (isAudioPlaying && !usingCustomAudio) playMelodicSynth(); }, 9000);
+                }
+            }
+        }
+
+        function loadCustomAudio(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const fileURL = URL.createObjectURL(file);
+                customAudioElement.src = fileURL;
+                usingCustomAudio = true;
+                if (!isAudioPlaying) toggleAudio();
+                else customAudioElement.play();
+            }
+        }
+
+        // --- 2. Three.js World & Garden Setup ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x030108, 0.03);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 3, 17);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.25;
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2 + 0.05;
+        controls.minDistance = 6;
+        controls.maxDistance = 26;
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x4c1d95, 2.0);
+        scene.add(ambientLight);
+
+        const sunLight = new THREE.DirectionalLight(0xf472b6, 2.5);
+        sunLight.position.set(5, 15, 10);
+        scene.add(sunLight);
+
+        const groundLight = new THREE.PointLight(0x38bdf8, 2, 25);
+        groundLight.position.set(-8, 1, -5);
+        scene.add(groundLight);
+
+        const bloomSpot = new THREE.PointLight(0xec4899, 4, 15);
+        bloomSpot.position.set(0, 4, 2);
+        scene.add(bloomSpot);
+
+        // --- 3. Garden Environment Floor & Background Flowers ---
+        // Curved Grass Floor Terrain
+        const groundGeom = new THREE.PlaneGeometry(60, 60, 32, 32);
+        const posAttr = groundGeom.attributes.position;
+        for (let i = 0; i < posAttr.count; i++) {
+            const vx = posAttr.getX(i);
+            const vy = posAttr.getY(i);
+            const vz = Math.sin(vx * 0.2) * Math.cos(vy * 0.2) * 0.8;
+            posAttr.setZ(i, vz);
+        }
+        groundGeom.computeVertexNormals();
+
+        const groundMat = new THREE.MeshStandardMaterial({
+            color: 0x064e3b,
+            roughness: 0.8,
+            metalness: 0.1
+        });
+        const ground = new THREE.Mesh(groundGeom, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -4;
+        scene.add(ground);
+
+        // Helper function for small background static flowers
+        function createStaticFlower(x, z, colorHex, scale = 0.6) {
+            const group = new THREE.Group();
+            group.position.set(x, -4, z);
+
+            const stemGeom = new THREE.CylinderGeometry(0.04, 0.06, 2.5);
+            const stemMat = new THREE.MeshStandardMaterial({ color: 0x15803d });
+            const stem = new THREE.Mesh(stemGeom, stemMat);
+            stem.position.y = 1.25;
+            group.add(stem);
+
+            const petalMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.3 });
+            for (let i = 0; i < 5; i++) {
+                const pGeom = new THREE.ConeGeometry(0.3, 1, 4);
+                const pMesh = new THREE.Mesh(pGeom, petalMat);
+                pMesh.position.y = 2.5;
+                pMesh.rotation.y = (i / 5) * Math.PI * 2;
+                pMesh.rotation.z = 0.8;
+                group.add(pMesh);
+            }
+            group.scale.setScalar(scale);
+            scene.add(group);
+        }
+
+        // Populate Garden with colourful background flowers
+        const flowerColors = [0xec4899, 0xa855f7, 0x38bdf8, 0xfacc15, 0xf43f5e];
+        for (let i = 0; i < 35; i++) {
+            const rx = (Math.random() - 0.5) * 30;
+            const rz = (Math.random() - 0.5) * 30;
+            if (Math.hypot(rx, rz) > 4) { // keep center clear for main flower
+                const col = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+                createStaticFlower(rx, rz, col, 0.4 + Math.random() * 0.4);
+            }
+        }
+
+        // --- 4. 3D Butterflies Construction & Animation ---
+        const butterflies = [];
+
+        function createButterfly(colorHex) {
+            const bGroup = new THREE.Group();
+
+            // Body
+            const bodyGeom = new THREE.CylinderGeometry(0.03, 0.03, 0.6);
+            const bodyMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+            const body = new THREE.Mesh(bodyGeom, bodyMat);
+            body.rotation.x = Math.PI / 2;
+            bGroup.add(body);
+
+            // Wings
+            const wingShape = new THREE.Shape();
+            wingShape.moveTo(0, 0);
+            wingShape.quadraticCurveTo(0.6, 0.8, 0.8, 0.2);
+            wingShape.quadraticCurveTo(0.5, -0.4, 0, 0);
+
+            const wingGeom = new THREE.ShapeGeometry(wingShape);
+            const wingMat = new THREE.MeshStandardMaterial({
+                color: colorHex,
+                side: THREE.DoubleSide,
+                roughness: 0.2,
+                emissive: colorHex,
+                emissiveIntensity: 0.3
+            });
+
+            const leftWing = new THREE.Mesh(wingGeom, wingMat);
+            const rightWing = new THREE.Mesh(wingGeom, wingMat);
+            rightWing.scale.x = -1;
+
+            bGroup.add(leftWing);
+            bGroup.add(rightWing);
+
+            bGroup.scale.setScalar(0.7);
+            scene.add(bGroup);
+
+            return {
+                group: bGroup,
+                leftWing: leftWing,
+                rightWing: rightWing,
+                targetPos: new THREE.Vector3(),
+                speed: 0.03 + Math.random() * 0.02,
+                angle: Math.random() * Math.PI * 2
+            };
+        }
+
+        // Spawn 6 Fluttering Butterflies around the garden
+        const bColors = [0xf472b6, 0x38bdf8, 0xfacc15, 0xc084fc];
+        for (let i = 0; i < 6; i++) {
+            butterflies.push(createButterfly(bColors[i % bColors.length]));
+        }
+
+        // --- 5. Main Hero Flower (Growing & Blooming Lily) ---
+        const plantGroup = new THREE.Group();
+        plantGroup.position.y = -4;
+        scene.add(plantGroup);
+
+        // Stem Growth Path
+        const stemPoints = [
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(0.25, 1.8, 0.1),
+            new THREE.Vector3(-0.3, 3.8, -0.2),
+            new THREE.Vector3(0.15, 5.8, 0.1),
+            new THREE.Vector3(0, 7.2, 0)
+        ];
+        const stemCurve = new THREE.CatmullRomCurve3(stemPoints);
+
+        const stemMaterial = new THREE.MeshStandardMaterial({
+            color: 0x16a34a,
+            roughness: 0.4,
+            metalness: 0.1
+        });
+        const stemWireframeMat = new THREE.MeshBasicMaterial({
+            color: 0xf472b6,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.3
+        });
+
+        let stemMesh, stemWireframe;
+        function updateStemGrowth(progress) {
+            if (stemMesh) plantGroup.remove(stemMesh);
+            if (stemWireframe) plantGroup.remove(stemWireframe);
+            if (progress <= 0.01) return;
+
+            const currentPoints = stemCurve.getPoints(Math.max(10, Math.floor(60 * progress)));
+            const subCurve = new THREE.CatmullRomCurve3(currentPoints);
+            const geom = new THREE.TubeGeometry(subCurve, 64, 0.14 * (1 - progress * 0.25), 12, false);
+
+            stemMesh = new THREE.Mesh(geom, stemMaterial);
+            stemWireframe = new THREE.Mesh(geom, stemWireframeMat);
+            plantGroup.add(stemMesh, stemWireframe);
+        }
+
+        // Leaves
+        const leafMaterial = new THREE.MeshStandardMaterial({ color: 0x15803d, side: THREE.DoubleSide });
+        function createLeaf(scale, rotY, rotZ) {
+            const shape = new THREE.Shape();
+            shape.moveTo(0, 0);
+            shape.quadraticCurveTo(0.6, 1.2, 0.9, 2.2);
+            shape.quadraticCurveTo(0, 3.2, 0, 4.0);
+            shape.quadraticCurveTo(-0.9, 2.2, -0.6, 1.2);
+            shape.quadraticCurveTo(0, 0, 0, 0);
+
+            const geom = new THREE.ShapeGeometry(shape);
+            const mesh = new THREE.Mesh(geom, leafMaterial);
+            mesh.scale.set(scale, scale, scale);
+            mesh.rotation.y = rotY;
+            mesh.rotation.z = rotZ;
+            mesh.rotation.x = 0.35;
+            return mesh;
+        }
+
+        const leavesGroup = new THREE.Group();
+        const l1 = createLeaf(0.55, 0.4, -0.6); l1.position.set(0.1, 2.2, 0);
+        const l2 = createLeaf(0.65, -1.3, 0.7); l2.position.set(-0.2, 4.2, 0);
+        leavesGroup.add(l1, l2);
+        leavesGroup.scale.set(0, 0, 0);
+        plantGroup.add(leavesGroup);
+
+        // Flower Head Blooming Petals
+        const flowerHeadGroup = new THREE.Group();
+        flowerHeadGroup.position.set(0, 7.2, 0);
+        plantGroup.add(flowerHeadGroup);
+
+        const outerPetals = [];
+        const innerPetals = [];
+
+        function createPetalGeom() {
+            const geom = new THREE.PlaneGeometry(1.3, 3.8, 16, 16);
+            const pos = geom.attributes.position;
+            for (let i = 0; i < pos.count; i++) {
+                const y = pos.getY(i);
+                const x = pos.getX(i);
+                const widthFactor = 1 - Math.pow((y / 1.9), 2) * 0.45;
+                pos.setX(i, x * widthFactor);
+                const z = Math.sin((y + 1.9) / 3.8 * Math.PI) * 0.45 - Math.pow(x, 2) * 0.35;
+                pos.setZ(i, z);
+            }
+            geom.computeVertexNormals();
+            geom.translate(0, 1.9, 0);
+            return geom;
+        }
+
+        const petalGeom = createPetalGeom();
+        const outerPetalMat = new THREE.MeshStandardMaterial({
+            color: 0xec4899,
+            emissive: 0x9d174d,
+            emissiveIntensity: 0.35,
+            roughness: 0.2,
+            side: THREE.DoubleSide
+        });
+        const innerPetalMat = new THREE.MeshStandardMaterial({
+            color: 0xf472b6,
+            emissive: 0xbe185d,
+            emissiveIntensity: 0.45,
+            roughness: 0.25,
+            side: THREE.DoubleSide
+        });
+
+        // 6 Outer Petals
+        for (let i = 0; i < 6; i++) {
+            const pivot = new THREE.Group();
+            pivot.rotation.y = (i / 6) * Math.PI * 2;
+            const mesh = new THREE.Mesh(petalGeom, outerPetalMat);
+            mesh.rotation.x = 0.08;
+            pivot.add(mesh);
+            flowerHeadGroup.add(pivot);
+            outerPetals.push(mesh);
+        }
+
+        // 3 Inner Petals
+        for (let i = 0; i < 3; i++) {
+            const pivot = new THREE.Group();
+            pivot.rotation.y = (i / 3) * Math.PI * 2 + 0.5;
+            const mesh = new THREE.Mesh(petalGeom, innerPetalMat);
+            mesh.scale.set(0.85, 0.88, 0.85);
+            mesh.rotation.x = 0.04;
+            pivot.add(mesh);
+            flowerHeadGroup.add(pivot);
+            innerPetals.push(mesh);
+        }
+
+        // Center Stamens
+        const stamenGroup = new THREE.Group();
+        const stamenMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+        for (let i = 0; i < 6; i++) {
+            const sGeom = new THREE.CylinderGeometry(0.02, 0.02, 1.6);
+            sGeom.translate(0, 0.8, 0);
+            const stamen = new THREE.Mesh(sGeom, stamenMat);
+            stamen.rotation.y = (i / 6) * Math.PI * 2;
+            stamen.rotation.x = 0.22;
+
+            const tipGeom = new THREE.BoxGeometry(0.12, 0.3, 0.12);
+            const tipMat = new THREE.MeshBasicMaterial({ color: 0xeab308 });
+            const tip = new THREE.Mesh(tipGeom, tipMat);
+            tip.position.y = 1.6;
+            stamen.add(tip);
+
+            stamenGroup.add(stamen);
+        }
+        stamenGroup.scale.set(0, 0, 0);
+        flowerHeadGroup.add(stamenGroup);
+
+        // Ambient Sparks Particle System
+        const particleCount = 300;
+        const pGeom = new THREE.BufferGeometry();
+        const pPos = new Float32Array(particleCount * 3);
+        for (let i = 0; i < particleCount * 3; i += 3) {
+            pPos[i] = (Math.random() - 0.5) * 22;
+            pPos[i + 1] = Math.random() * 14 - 3;
+            pPos[i + 2] = (Math.random() - 0.5) * 22;
+        }
+        pGeom.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+        const pMat = new THREE.PointsMaterial({
+            color: 0xf472b6,
+            size: 0.14,
+            transparent: true,
+            opacity: 0.75,
+            blending: THREE.AdditiveBlending
+        });
+        const particleSystem = new THREE.Points(pGeom, pMat);
+        scene.add(particleSystem);
+
+        // --- 6. Poetic Bengali Lines & Lyrics Data ---
+        const RomanticPoems = [
+            "তোমার প্রেমে ব্যাকুল এই হিয়া...",
+            "তুমি আমার অনুভূতির নীল সীমানা,",
+            "আকাশের নক্ষত্রগুলো যেন তোমার হাসির প্রতিধ্বনি,",
+            "প্রতিটি ধুকপুকানিতে শুধু তোমারই নাম...",
+            "তোমার মাঝেই খুঁজে পাই পরম প্রশান্তি।"
+        ];
+
+        const poeticContainer = document.getElementById('poetic-lines-wrapper');
+
+        function spawnFloatingPoem(text, delay) {
+            setTimeout(() => {
+                const el = document.createElement('div');
+                el.className = 'floating-poem glow-text-pink';
+                el.innerText = text;
+
+                const topPct = 20 + Math.random() * 50;
+                const leftPct = 10 + Math.random() * 70;
+                el.style.top = `${topPct}%`;
+                el.style.left = `${leftPct}%`;
+                el.style.opacity = '0';
+                el.style.transform = 'scale(0.85) translateY(20px)';
+
+                poeticContainer.appendChild(el);
+
+                gsap.to(el, {
+                    opacity: 1,
+                    scale: 1,
+                    y: 0,
+                    duration: 1.5,
+                    onComplete: () => {
+                        gsap.to(el, {
+                            opacity: 0,
+                            y: -30,
+                            duration: 2,
+                            delay: 2.5,
+                            onComplete: () => el.remove()
+                        });
+                    }
+                });
+            }, delay);
+        }
+
+        // --- 7. Master Timeline Sequences ---
+        let isPlaying = true;
+        const totalDuration = 24; // Seconds
+
+        const timelineState = {
+            stemGrowth: 0,
+            leavesScale: 0,
+            bloomProgress: 0,
+            cameraZ: 17,
+            cameraY: 3
+        };
+
+        const masterTL = gsap.timeline({
+            paused: false,
+            onUpdate: updateMasterSequence,
+            onComplete: showThankYouStage
+        });
+
+        // 0 - 6s: Stem Growth
+        masterTL.to(timelineState, { stemGrowth: 1, duration: 6, ease: "power1.inOut" }, 0);
+        
+        // 4 - 7s: Leaves Unfold
+        masterTL.to(timelineState, { leavesScale: 1, duration: 3, ease: "back.out(1.7)" }, 4);
+
+        // 6 - 12s: Flower Blooms & Camera moves close
+        masterTL.to(timelineState, { bloomProgress: 1, cameraZ: 11.5, cameraY: 3.8, duration: 6, ease: "power2.out" }, 6);
+
+        // 11 - 18s: Main Banner Lyric
+        masterTL.to('#main-lyric-container', { opacity: 1, y: 0, duration: 1.5, ease: "power2.out" }, 11);
+
+        // Spawn Poems around 9.5s
+        masterTL.add(() => {
+            RomanticPoems.forEach((line, idx) => {
+                spawnFloatingPoem(line, idx * 2400);
+            });
+        }, 9.5);
+
+        // 18 - 22s: Fade Lyric & Transition to Thank You
+        masterTL.to('#main-lyric-container', { opacity: 0, y: -20, duration: 1.5 }, 18);
+
+        function updateMasterSequence() {
+            const prog = masterTL.progress();
+
+            document.getElementById('progress-bar').style.width = `${prog * 100}%`;
+            const currentSec = Math.floor(prog * totalDuration);
+            document.getElementById('time-display').innerText = `00:${currentSec < 10 ? '0' + currentSec : currentSec}`;
+
+            const phaseEl = document.getElementById('phase-indicator');
+            if (prog < 0.25) phaseEl.innerText = "ধাপ ১: বাগানে বীজ বপন ও কাণ্ড গজানো...";
+            else if (prog < 0.50) phaseEl.innerText = "ধাপ ২: পাপড়ি মেলে সৌন্দর্য প্রকাশ...";
+            else if (prog < 0.78) phaseEl.innerText = "ধাপ ৩: হৃদয়ের বার্তা ও গানের সুর...";
+            else phaseEl.innerText = "ধাপ ৪: শেষ ঠিকানা ও ধন্যবাদ...";
+
+            // 1. Stem
+            updateStemGrowth(timelineState.stemGrowth);
+
+            // 2. Leaves
+            leavesGroup.scale.setScalar(timelineState.leavesScale);
+
+            // 3. Blooming Petals
+            const bloom = timelineState.bloomProgress;
+            outerPetals.forEach((p, idx) => {
+                p.rotation.x = THREE.MathUtils.lerp(0.08, 1.3, bloom);
+                p.rotation.z = Math.sin(idx + bloom) * 0.1;
+            });
+            innerPetals.forEach((p) => {
+                p.rotation.x = THREE.MathUtils.lerp(0.04, 0.98, bloom);
+            });
+            stamenGroup.scale.setScalar(bloom);
+
+            // Camera
+            camera.position.z = timelineState.cameraZ;
+            camera.position.y = timelineState.cameraY;
+        }
+
+        function showThankYouStage() {
+            const card = document.getElementById('thank-you-card');
+            card.classList.remove('pointer-events-none');
+            gsap.to(card, { opacity: 1, scale: 1, duration: 1.2, ease: "back.out(1.2)" });
+        }
+
+        function togglePlayPause() {
+            isPlaying = !isPlaying;
+            if (isPlaying) {
+                masterTL.play();
+                document.getElementById('pause-icon').classList.remove('hidden');
+                document.getElementById('play-icon').classList.add('hidden');
+            } else {
+                masterTL.pause();
+                document.getElementById('pause-icon').classList.add('hidden');
+                document.getElementById('play-icon').classList.remove('hidden');
+            }
+        }
+
+        function seekTimeline(e) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const pct = Math.max(0, Math.min(1, clickX / rect.width));
+
+            const card = document.getElementById('thank-you-card');
+            card.classList.add('pointer-events-none');
+            card.style.opacity = '0';
+
+            masterTL.progress(pct);
+            if (!isPlaying) togglePlayPause();
+        }
+
+        function restartExperience() {
+            const card = document.getElementById('thank-you-card');
+            card.classList.add('pointer-events-none');
+            card.style.opacity = '0';
+
+            gsap.to('#main-lyric-container', { opacity: 0, y: 30, duration: 0.5 });
+            poeticContainer.innerHTML = '';
+
+            masterTL.restart();
+            isPlaying = true;
+            document.getElementById('pause-icon').classList.remove('hidden');
+            document.getElementById('play-icon').classList.add('hidden');
+        }
+
+        // --- 8. Animation & Render Loop ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const elapsedTime = clock.getElapsedTime();
+
+            // Main plant subtle swaying in wind
+            plantGroup.rotation.y = Math.sin(elapsedTime * 0.4) * 0.12;
+            plantGroup.rotation.z = Math.cos(elapsedTime * 0.3) * 0.03;
+
+            // Butterfly Flying Logic
+            butterflies.forEach((b, idx) => {
+                const wingFlap = Math.sin(elapsedTime * 14 + idx) * 0.7;
+                b.leftWing.rotation.y = wingFlap;
+                b.rightWing.rotation.y = -wingFlap;
+
+                // Orbit path around garden
+                const radius = 5 + Math.sin(elapsedTime + idx) * 2;
+                const angle = elapsedTime * 0.5 + idx * 1.2;
+                b.group.position.x = Math.cos(angle) * radius;
+                b.group.position.z = Math.sin(angle) * radius;
+                b.group.position.y = Math.sin(elapsedTime * 2 + idx) * 1.5 + 2;
+                b.group.rotation.y = -angle + Math.PI / 2;
+            });
+
+            // Particles rising
+            const positions = pGeom.attributes.position.array;
+            for (let i = 1; i < particleCount * 3; i += 3) {
+                positions[i] += 0.015;
+                if (positions[i] > 11) positions[i] = -3;
+            }
+            pGeom.attributes.position.needsUpdate = true;
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Window Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start
+        animate();
+
+    </script>
+</body>
+</html>
